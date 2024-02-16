@@ -1,13 +1,38 @@
+import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:flutter/material.dart';
+
 import 'package:firebase_core/firebase_core.dart';
-import 'exam.dart';
-import 'examWid.dart';
 import 'firebase_options.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+
+import 'exam.dart';
+import 'examWid.dart';
+import 'calendar.dart';
+import 'notification.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  await AwesomeNotifications().initialize(null, [
+    NotificationChannel(
+      channelGroupKey: "basic_channel_group",
+      channelKey: "basic_channel",
+      channelName: "basic_notif",
+      channelDescription: "basic notification channel",
+    )
+  ], channelGroups: [
+    NotificationChannelGroup(
+        channelGroupKey: "basic_channel_group", channelGroupName: "basic_group")
+  ]);
+
+  bool isAllowedToSendNotification =
+  await AwesomeNotifications().isNotificationAllowed();
+
+  if (!isAllowedToSendNotification) {
+    AwesomeNotifications().requestPermissionToSendNotifications();
+  }
+
   runApp(const MyApp());
 }
 
@@ -36,10 +61,30 @@ class MainListScreen extends StatefulWidget {
 
 class MainListScreenState extends State<MainListScreen> {
   final List<Exam> exams = [
-    Exam(course: 'Management Information System', timestamp: DateTime(2024, 01, 15)),
-    Exam(course: 'Introduction to Data Science', timestamp: DateTime(2024, 02, 09)),
-    Exam(course: 'Databases', timestamp: DateTime(2024, 01, 17))
+    Exam(course: 'MIS', timestamp: DateTime.now()),
+    Exam(course: 'MPiP', timestamp: DateTime(2023, 12, 31)),
+    Exam(course: 'VBS', timestamp: DateTime(2023, 12, 22))
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    AwesomeNotifications().setListeners(
+        onActionReceivedMethod: NotificationController.onActionReceiveMethod,
+        onDismissActionReceivedMethod:
+        NotificationController.onDismissActionReceiveMethod,
+        onNotificationCreatedMethod:
+        NotificationController.onNotificationCreateMethod,
+        onNotificationDisplayedMethod:
+        NotificationController.onNotificationDisplayed);
+    _scheduleNotificationsForExistingExams();
+  }
+
+  void _scheduleNotificationsForExistingExams() {
+    for (int i = 0; i < exams.length; i++) {
+      _scheduleNotification(exams[i]);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,6 +92,10 @@ class MainListScreenState extends State<MainListScreen> {
       appBar: AppBar(
         title: const Text('Exams'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.calendar_month),
+            onPressed: _openCalendar,
+          ),
           IconButton(
             icon: const Icon(Icons.add),
             onPressed: () => FirebaseAuth.instance.currentUser != null
@@ -94,14 +143,13 @@ class MainListScreenState extends State<MainListScreen> {
     );
   }
 
-  Future<void> _signOut() async {
-    await FirebaseAuth.instance.signOut();
-  }
-
-  void _navigateToSignInPage(BuildContext context) {
-    Future.delayed(Duration.zero, () {
-      Navigator.pushReplacementNamed(context, '/login');
-    });
+  void _openCalendar() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CalendarWidget(exams: exams),
+      ),
+    );
   }
 
   Future<void> _addExamFunction(BuildContext context) async {
@@ -121,7 +169,35 @@ class MainListScreenState extends State<MainListScreen> {
   void _addExam(Exam exam) {
     setState(() {
       exams.add(exam);
+      _scheduleNotification(exam);
     });
+  }
+
+  Future<void> _signOut() async {
+    await FirebaseAuth.instance.signOut();
+  }
+
+  void _navigateToSignInPage(BuildContext context) {
+    Future.delayed(Duration.zero, () {
+      Navigator.pushReplacementNamed(context, '/login');
+    });
+  }
+
+  void _scheduleNotification(Exam exam) {
+    final int notificationId = exams.indexOf(exam);
+
+    AwesomeNotifications().createNotification(
+        content: NotificationContent(
+            id: notificationId,
+            channelKey: "basic_channel",
+            title: exam.course,
+            body: "You have an exam tomorrow!"),
+        schedule: NotificationCalendar(
+            day: exam.timestamp.subtract(const Duration(days: 1)).day,
+            month: exam.timestamp.subtract(const Duration(days: 1)).month,
+            year: exam.timestamp.subtract(const Duration(days: 1)).year,
+            hour: exam.timestamp.subtract(const Duration(days: 1)).hour,
+            minute: exam.timestamp.subtract(const Duration(days: 1)).minute));
   }
 }
 
@@ -185,7 +261,7 @@ class AuthScreenState extends State<AuthScreen> {
               onPressed: () {
                 Navigator.pop(context);
               },
-              child: const Text("OKAY"),
+              child: const Text("OK"),
             ),
           ],
         );
