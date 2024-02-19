@@ -13,4 +13,5 @@ class GoogleMaps {
 
     await launchUrl(uri);
   }
+
 }

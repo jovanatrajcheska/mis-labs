@@ -5,7 +5,6 @@ import 'package:latlong2/latlong.dart';
 import 'package:lab3_4_5/googlemaps.dart';
 import 'unilocation.dart';
 
-
 class MapWidget extends StatefulWidget {
   const MapWidget({super.key});
 

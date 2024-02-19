@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 
+
 class LocationService {
   Future<void> checkLocationPermission() async {
     LocationPermission permission = await Geolocator.requestPermission();

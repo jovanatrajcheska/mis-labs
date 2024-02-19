@@ -3,6 +3,12 @@ import 'package:syncfusion_flutter_calendar/calendar.dart';
 
 import 'exam.dart';
 
+class _DataSource extends CalendarDataSource {
+  _DataSource(List<Appointment> source) {
+    appointments = source;
+  }
+}
+
 class CalendarWidget extends StatelessWidget {
   final List<Exam> exams;
 
@@ -80,8 +86,4 @@ class CalendarWidget extends StatelessWidget {
   }
 }
 
-class _DataSource extends CalendarDataSource {
-  _DataSource(List<Appointment> source) {
-    appointments = source;
-  }
-}
+
