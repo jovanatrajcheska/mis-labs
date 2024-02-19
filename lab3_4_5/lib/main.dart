@@ -2,13 +2,15 @@ import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:flutter/material.dart';
 
 import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'firebase_options.dart';
 
 import 'exam.dart';
-import 'examWid.dart';
-import 'calendar.dart';
-import 'notification.dart';
+import 'package:lab3_4_5/calendar.dart';
+import 'package:lab3_4_5/examWid.dart';
+import 'package:lab3_4_5/mapWid.dart';
+import 'notificationcontroller.dart';
+import 'notificationservice.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,10 +28,7 @@ void main() async {
         channelGroupKey: "basic_channel_group", channelGroupName: "basic_group")
   ]);
 
-  bool isAllowedToSendNotification =
-  await AwesomeNotifications().isNotificationAllowed();
-
-  if (!isAllowedToSendNotification) {
+  if (!(await AwesomeNotifications().isNotificationAllowed())) {
     AwesomeNotifications().requestPermissionToSendNotifications();
   }
 
@@ -66,9 +65,12 @@ class MainListScreenState extends State<MainListScreen> {
     Exam(course: 'VBS', timestamp: DateTime(2023, 12, 22))
   ];
 
+  bool _isLocationBasedNotificationsEnabled = false;
+
   @override
   void initState() {
     super.initState();
+
     AwesomeNotifications().setListeners(
         onActionReceivedMethod: NotificationController.onActionReceiveMethod,
         onDismissActionReceivedMethod:
@@ -77,21 +79,24 @@ class MainListScreenState extends State<MainListScreen> {
         NotificationController.onNotificationCreateMethod,
         onNotificationDisplayedMethod:
         NotificationController.onNotificationDisplayed);
-    _scheduleNotificationsForExistingExams();
-  }
 
-  void _scheduleNotificationsForExistingExams() {
-    for (int i = 0; i < exams.length; i++) {
-      _scheduleNotification(exams[i]);
-    }
+    NotificationService().scheduleNotificationsForExistingExams(exams);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Exams'),
+        title: const Text('Midterm List'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.alarm_add),
+            color: _isLocationBasedNotificationsEnabled
+                ? Colors.amberAccent
+                : Colors.grey,
+            onPressed: _toggleLocationNotifications,
+          ),
+          IconButton(onPressed: _openMap, icon: const Icon(Icons.map)),
           IconButton(
             icon: const Icon(Icons.calendar_month),
             onPressed: _openCalendar,
@@ -143,6 +148,34 @@ class MainListScreenState extends State<MainListScreen> {
     );
   }
 
+  void _toggleLocationNotifications() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text("Location Based Notifications"),
+          content: _isLocationBasedNotificationsEnabled
+              ? const Text("You have turned off location-based notifications")
+              : const Text("You have turned on location-based notifications"),
+          actions: [
+            TextButton(
+              onPressed: () {
+                NotificationService().toggleLocationNotification();
+                setState(() {
+                  _isLocationBasedNotificationsEnabled =
+                  !_isLocationBasedNotificationsEnabled;
+                });
+                Navigator.pop(context);
+              },
+              child: const Text("OK"),
+            )
+          ],
+        );
+      },
+    );
+  }
+
   void _openCalendar() {
     Navigator.push(
       context,
@@ -150,6 +183,11 @@ class MainListScreenState extends State<MainListScreen> {
         builder: (context) => CalendarWidget(exams: exams),
       ),
     );
+  }
+
+  void _openMap() {
+    Navigator.push(
+        context, MaterialPageRoute(builder: (context) => const MapWidget()));
   }
 
   Future<void> _addExamFunction(BuildContext context) async {
@@ -169,7 +207,7 @@ class MainListScreenState extends State<MainListScreen> {
   void _addExam(Exam exam) {
     setState(() {
       exams.add(exam);
-      _scheduleNotification(exam);
+      NotificationService().scheduleNotification(exam);
     });
   }
 
@@ -181,23 +219,6 @@ class MainListScreenState extends State<MainListScreen> {
     Future.delayed(Duration.zero, () {
       Navigator.pushReplacementNamed(context, '/login');
     });
-  }
-
-  void _scheduleNotification(Exam exam) {
-    final int notificationId = exams.indexOf(exam);
-
-    AwesomeNotifications().createNotification(
-        content: NotificationContent(
-            id: notificationId,
-            channelKey: "basic_channel",
-            title: exam.course,
-            body: "You have an exam tomorrow!"),
-        schedule: NotificationCalendar(
-            day: exam.timestamp.subtract(const Duration(days: 1)).day,
-            month: exam.timestamp.subtract(const Duration(days: 1)).month,
-            year: exam.timestamp.subtract(const Duration(days: 1)).year,
-            hour: exam.timestamp.subtract(const Duration(days: 1)).hour,
-            minute: exam.timestamp.subtract(const Duration(days: 1)).minute));
   }
 }
 
