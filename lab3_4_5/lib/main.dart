@@ -12,6 +12,8 @@ import 'package:lab3_4_5/mapWid.dart';
 import 'notificationcontroller.dart';
 import 'notificationservice.dart';
 
+
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
